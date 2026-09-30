@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLAUDE.md Starter — generate a project brief for Claude Code in 60 seconds</title>
+<meta name="description" content="Free generator for CLAUDE.md: commands, conventions, guardrails and 'never do' rules for Claude Code. Built for ctaio.dev readers.">
+<style>
+:root{--bg:#0b0c10;--card:#13151b;--line:#262a33;--text:#e8eaf0;--muted:#9aa1ad;--accent:#7c5cff;--ok:#3ecf8e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:28px;margin:0 0 6px;letter-spacing:-.3px}p.lead{color:var(--muted);margin:0 0 22px;max-width:760px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input,textarea,select{width:100%;background:#0e1016;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+textarea{min-height:64px;resize:vertical}
+.checks label{display:flex;gap:8px;align-items:flex-start;color:var(--text);font-size:14px;margin:6px 0}
+.checks input{width:auto;margin-top:4px}
+pre{white-space:pre-wrap;word-break:break-word;background:#0e1016;border:1px solid var(--line);border-radius:8px;padding:12px;min-height:420px;margin:0;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 14px;font:inherit;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.hint{font-size:12px;color:var(--muted)}.ok{color:var(--ok)}
+footer{margin-top:26px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>CLAUDE.md Starter</h1>
+<p class="lead">Claude Code reads <code>CLAUDE.md</code> at the start of every session. A short, specific file beats a long, vague one. Fill in what you know — the preview builds a lean brief with commands, conventions and hard guardrails you can paste into your repo root.</p>
+<div class="grid">
+<section class="card" aria-label="Inputs">
+<label for="name">Project name</label><input id="name" value="acme-api">
+<label for="what">What it is (one line)</label><input id="what" value="REST API for billing, Node.js 20 + PostgreSQL">
+<label for="stack">Stack</label><input id="stack" value="Node.js 20 (ESM), Express, PostgreSQL 15, Vitest">
+<label for="install">Install</label><input id="install" value="npm ci">
+<label for="dev">Run locally</label><input id="dev" value="npm run dev">
+<label for="test">Test (single file example)</label><input id="test" value="npx vitest run src/billing/invoice.test.ts">
+<label for="lint">Lint / typecheck</label><input id="lint" value="npm run lint && npm run typecheck">
+<label for="conv">Conventions (one per line)</label>
+<textarea id="conv">Small pure functions, no classes for business logic
+Every DB change = new migration in db/migrations, never edit old ones
+Errors: throw AppError with a code, never return null for failures</textarea>
+<label for="never">Never do (one per line)</label>
+<textarea id="never">Never commit .env or print secrets in logs
+Never run migrations against production</textarea>
+<div class="checks">
+<label><input type="checkbox" id="c1" checked> Ask before adding a new dependency</label>
+<label><input type="checkbox" id="c2" checked> Run tests + lint before saying "done"; paste the output</label>
+<label><input type="checkbox" id="c3" checked> Small commits, one logical change each</label>
+<label><input type="checkbox" id="c4"> Plan first for changes touching &gt;3 files (write the plan, then wait)</label>
+<label><input type="checkbox" id="c5"> Don't start dev servers — use the build to verify</label>
+</div>
+</section>
+<section class="card" aria-label="Preview">
+<label>Preview — <span id="stats" class="hint"></span></label>
+<pre id="out" aria-live="polite"></pre>
+<div class="row"><button id="copy">Copy</button><button id="dl" class="ghost">Download CLAUDE.md</button><span id="msg" class="hint"></span></div>
+<p class="hint">Tip: keep it under ~150 lines. Put rare, long procedures in <code>docs/</code> and link them — Claude reads the file every session, so every line costs context.</p>
+</section>
+</div>
+<footer>Built in one session with Claude Code for <a href="https://ctaio.dev" style="color:var(--text)">ctaio.dev</a> readers · single static file, no tracking, nothing leaves your browser.</footer>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const lines = (v) => v.split('\n').map((s) => s.trim()).filter(Boolean);
+const RULES = {
+  c1: 'Ask before adding a new dependency; prefer what is already in package.json.',
+  c2: 'Before saying "done": run the tests and lint, and paste the result. No green output = not done.',
+  c3: 'Small commits, one logical change each, with a clear message.',
+  c4: 'For changes touching more than 3 files: write a short plan first and wait for approval.',
+  c5: 'Do not start dev servers; verify with the build and tests.',
+};
+function build() {
+  const v = (id) => $(id).value.trim();
+  const out = [];
+  out.push(`# ${v('name') || 'Project'}`, '', v('what'), '');
+  if (v('stack')) out.push('## Stack', v('stack'), '');
+  out.push('## Commands');
+  [['Install', 'install'], ['Run', 'dev'], ['Test one file', 'test'], ['Lint/typecheck', 'lint']]
+    .forEach(([k, id]) => { if (v(id)) out.push(`- ${k}: \`${v(id)}\``); });
+  out.push('');
+  const conv = lines($('conv').value);
+  if (conv.length) out.push('## Conventions', ...conv.map((s) => `- ${s}`), '');
+  const rules = Object.keys(RULES).filter((k) => $(k).checked).map((k) => RULES[k]);
+  if (rules.length) out.push('## How to work here', ...rules.map((s) => `- ${s}`), '');
+  const never = lines($('never').value);
+  if (never.length) out.push('## Never', ...never.map((s) => `- ${s.replace(/^never\s+/i, '')}`), '');
+  const text = out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+  $('out').textContent = text;
+  const n = text.split('\n').length;
+  $('stats').textContent = `${n} lines · ~${Math.ceil(text.length / 4)} tokens`;
+  $('stats').className = n > 150 ? 'hint' : 'hint ok';
+  return text;
+}
+document.querySelectorAll('input,textarea').forEach((el) => el.addEventListener('input', build));
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(build()); $('msg').textContent = 'Copied'; }
+  catch { $('msg').textContent = 'Select the preview and copy manually'; }
+};
+$('dl').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([build()], { type: 'text/markdown' }));
+  a.download = 'CLAUDE.md'; a.click(); URL.revokeObjectURL(a.href);
+};
+build();
+</script>
+</body>
+</html>
